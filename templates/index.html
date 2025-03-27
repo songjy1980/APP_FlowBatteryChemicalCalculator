@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>液流电池化学计算相关</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .formula-group {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .remove-formula {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+        }
+        .result-table th, .result-table td {
+            padding: 8px;
+            text-align: left;
+        }
+        .detailed-result {
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .explanation-text {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+        .reference-text {
+            font-size: 0.9em;
+            color: #666;
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">液流电池化学计算相关</h2>
+        
+        <div class="explanation-text">
+            <p><strong>[1]</strong> 电子转移数基于需要计算化学分子式。以钒液流电池为例，溶解状态下的各种价态的钒离子，电子转移数为1。但如果这里的化学分子式为V2O5，则电子转移数应填2。</p>
+            
+            <p><strong>[2]</strong> 程序计算的1kWh所需质量，仅是一个极。如正极的Anthraquinone-based electrolyte 1,5-DCDHAQ仅是计算了正极电解液需要的活性物质质量。钒液流电池(由于正负极都为钒离子)的计算结果需乘以2。</p>
+            
+            <p><strong>[3]</strong> 电池电压，以及溶解度的输入对计算结果影响较大，需查阅相关资料。以下是一些参考：</p>
+            <div class="reference-text">
+                <p>- 使用1.5~1.8 mol/L钒离子浓度的硫酸电解液（H₂SO₄浓度3~5 mol/L），对应能量密度为 25 Wh/L (如用V2O5进行计算时，溶解度需除以2)。<br>
+                <small>[1] 朱兆武, 张旭堃, 苏慧, 张健, and 王丽娜, "全钒液流电池提高电解液浓度的研究与应用现状," 储能科学与技术, vol. 11, no. 11, pp. 3439–3446, 2022</small></p>
+                
+                <p>- 钒液流电池的电池电压在1.15-1.55V之间，开路电压为1.25V，如理论开路电压为1.37V，实际为1.25V。<br>
+                <small>[1] M. Shoaib et al., "Advances in Redox Flow Batteries – A Comprehensive Review on Inorganic and Organic Electrolytes and Engineering Perspectives," Advanced Energy Materials, vol. 14, no. 32, p. 2400721, Aug. 2024<br>
+                [2] D. Cremoncini et al., "Techno-economic analysis of Aqueous Organic Redox Flow Batteries: Stochastic investigation of capital cost and levelized cost of storage," Applied Energy, vol. 360, p. 122738, Apr. 2024</small></p>
+                
+                <p>- 苯醌衍生物（如DHBQ）与Fe(CN)6³⁻/Fe(CN)6⁴⁻配对时，开路电压为 1.2 V。<br>
+                <small>[1] 袁治章, 刘宗浩, and 李先锋, "液流电池储能技术研究进展," 储能科学与技术, vol. 11, no. 9, pp. 2944–2958, 2022</small></p>
+                
+                <p>- 西门子能源PRS中1,5-DCDHAQ与Fe(CN)6³⁻/Fe(CN)6⁴⁻配对时，能量密度在10-20Wh/L</p>
+            </div>
+        </div>
+        
+        <form id="calculatorForm" class="mb-4">
+            <div id="formulaContainer">
+                <!-- 初始的分子式输入组 -->
+                <div class="formula-group">
+                    <button type="button" class="btn btn-danger btn-sm remove-formula">删除</button>
+                    <div class="mb-3">
+                        <label class="form-label">化学分子式</label>
+                        <input type="text" class="form-control formula" required>
+                        <div class="form-text">例如: H2O, NaCl, H2SO4</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">电子转移数</label>
+                            <input type="number" class="form-control electron-transfer" step="0.1">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">电池电压 (V)</label>
+                            <input type="number" class="form-control voltage" step="0.001">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">溶解度 (mol/L)</label>
+                            <input type="number" class="form-control solubility" step="0.001">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mb-3">
+                <button type="button" id="addFormula" class="btn btn-secondary">添加分子式</button>
+                <button type="submit" class="btn btn-primary ms-2">计算</button>
+            </div>
+        </form>
+
+        <div id="results" class="mt-4">
+            <!-- 结果将在这里显示 -->
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const formulaContainer = document.getElementById('formulaContainer');
+            const addFormulaBtn = document.getElementById('addFormula');
+            const calculatorForm = document.getElementById('calculatorForm');
+            const resultsDiv = document.getElementById('results');
+
+            // 添加新的分子式输入组
+            addFormulaBtn.addEventListener('click', function() {
+                const newGroup = formulaContainer.children[0].cloneNode(true);
+                // 清空输入值
+                newGroup.querySelectorAll('input').forEach(input => input.value = '');
+                formulaContainer.appendChild(newGroup);
+            });
+
+            // 删除分子式输入组
+            formulaContainer.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-formula')) {
+                    if (formulaContainer.children.length > 1) {
+                        e.target.closest('.formula-group').remove();
+                    } else {
+                        alert('至少需要保留一个分子式输入组');
+                    }
+                }
+            });
+
+            // 表单提交处理
+            calculatorForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const formulas = [];
+                document.querySelectorAll('.formula-group').forEach(group => {
+                    const formula = group.querySelector('.formula').value;
+                    const electronTransfer = group.querySelector('.electron-transfer').value;
+                    const voltage = group.querySelector('.voltage').value;
+                    const solubility = group.querySelector('.solubility').value;
+                    
+                    formulas.push({
+                        formula: formula,
+                        electron_transfer: electronTransfer ? parseFloat(electronTransfer) : null,
+                        voltage: voltage ? parseFloat(voltage) : null,
+                        solubility: solubility ? parseFloat(solubility) : null
+                    });
+                });
+
+                try {
+                    const response = await fetch('/calculate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ formulas: formulas })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('计算请求失败');
+                    }
+
+                    const results = await response.json();
+                    displayResults(results);
+                } catch (error) {
+                    alert('计算过程中出现错误: ' + error.message);
+                }
+            });
+
+            // 显示计算结果
+            function displayResults(results) {
+                resultsDiv.innerHTML = '';
+                
+                results.forEach(result => {
+                    const resultCard = document.createElement('div');
+                    resultCard.className = 'card mb-4';
+                    
+                    let resultHtml = `
+                        <div class="card-header">
+                            <h5 class="mb-0">化学式: ${result.formula}</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table result-table">
+                                <tr>
+                                    <th>总分子量</th>
+                                    <td>${result.molecular_weight} g/mol</td>
+                                </tr>
+                    `;
+
+                    if (result.active_material_mass !== undefined) {
+                        resultHtml += `
+                            <tr>
+                                <th>存储1kWh所需质量</th>
+                                <td>${result.active_material_mass} g</td>
+                            </tr>
+                        `;
+                    }
+
+                    if (result.energy_density !== undefined) {
+                        resultHtml += `
+                            <tr>
+                                <th>溶液能量密度</th>
+                                <td>${result.energy_density} kWh/L</td>
+                            </tr>
+                        `;
+                    }
+
+                    resultHtml += `
+                            </table>
+                            <div class="detailed-result mt-3">
+                                <h6>详细计算过程:</h6>
+                                <pre>${result.calculation_details}</pre>
+                            </div>
+                        </div>
+                    `;
+
+                    resultCard.innerHTML = resultHtml;
+                    resultsDiv.appendChild(resultCard);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
